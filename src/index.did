@@ -1,0 +1,10 @@
+service: () -> {
+    createTask: (record {title:text; description:text}) -> (variant {Ok:record {id:text; title:text; isCompleted:bool; owner:principal; createdAt:nat64; description:text; updatedAt:nat64}; Err:variant {NotFound:text; Unauthorized:text; InternalError:text; Forbidden:text; BadRequest:text}});
+    createUser: (record {name:text; email:text}) -> (variant {Ok:record {id:principal; name:text; createdAt:nat64; email:text; updatedAt:nat64}; Err:variant {NotFound:text; Unauthorized:text; InternalError:text; Forbidden:text; BadRequest:text}});
+    deleteMyTask: (text) -> (variant {Ok:text; Err:variant {NotFound:text; Unauthorized:text; InternalError:text; Forbidden:text; BadRequest:text}});
+    getMe: () -> (variant {Ok:record {id:principal; name:text; createdAt:nat64; email:text; updatedAt:nat64}; Err:variant {NotFound:text; Unauthorized:text; InternalError:text; Forbidden:text; BadRequest:text}}) query;
+    getMyTasks: () -> (variant {Ok:vec record {id:text; title:text; isCompleted:bool; owner:principal; createdAt:nat64; description:text; updatedAt:nat64}; Err:variant {NotFound:text; Unauthorized:text; InternalError:text; Forbidden:text; BadRequest:text}}) query;
+    toggleMyTask: (text) -> (variant {Ok:record {id:text; title:text; isCompleted:bool; owner:principal; createdAt:nat64; description:text; updatedAt:nat64}; Err:variant {NotFound:text; Unauthorized:text; InternalError:text; Forbidden:text; BadRequest:text}});
+    updateMe: (record {name:text; email:text}) -> (variant {Ok:record {id:principal; name:text; createdAt:nat64; email:text; updatedAt:nat64}; Err:variant {NotFound:text; Unauthorized:text; InternalError:text; Forbidden:text; BadRequest:text}});
+    updateMyTask: (text, record {title:text; description:text}) -> (variant {Ok:record {id:text; title:text; isCompleted:bool; owner:principal; createdAt:nat64; description:text; updatedAt:nat64}; Err:variant {NotFound:text; Unauthorized:text; InternalError:text; Forbidden:text; BadRequest:text}});
+}
