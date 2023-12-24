@@ -78,79 +78,83 @@ export default Canister({
    * @param payload - Payload for creating a new user.
    * @returns the created user or an error.
    */
-  createUser: update([UserPayload], Result(User, Error), (payload) => {
-    try {
-      // If name or email is not provided, return error.
-      if (!payload.name || !payload.email) {
-        return Err({ BadRequest: 'Name and email are required' });
-      }
-
-      // If email is not valid, return error.
-      if (!isEmailValid(payload.email)) {
-        return Err({ BadRequest: 'Email is not valid' });
-      }
-
-      // If user already exists, return error.
-      if (isUserExists(ic.caller())) {
-        return Err({ BadRequest: 'You already have an account' });
-      }
-
-      // Create new user, insert it into storage and return it.
-      const newUser = {
-        id: ic.caller(),
-        createdAt: ic.time(),
-        updatedAt: ic.time(),
-        ...payload,
-      };
-      userStorage.insert(newUser.id, newUser);
-      return Ok(newUser);
-    } catch (error) {
-      // If any error occurs, return it.
-      return Err({ InternalError: `${error}` });
-    }
-  }),
+  
 
   /**
    * Retrieves the current user.
    * @returns the current user or an error.
    */
   getMe: query([], Result(User, Error), () => {
-    try {
-      // If user does not exist, return error.
-      if (!isUserExists(ic.caller())) {
-        return Err({ Unauthorized: 'Create an account first' });
-      }
-
-      // Return the current user.
-      const user = userStorage.get(ic.caller());
-      return Ok(user.Some);
-    } catch (error) {
-      // If any error occurs, return it.
-      return Err({ InternalError: `${error}` });
+  try {
+    if (!isUserExists(ic.caller())) {
+      return Err({ Unauthorized: 'Invalid operation: User does not exist' });
     }
-  }),
+
+    const user = userStorage.get(ic.caller());
+    return Ok(user.Some);
+  } catch (error) {
+    return Err({ InternalError: 'Internal server error' });
+  }
+}),
 
   /**
    * Updates the current user.
    * @param payload - Payload for updating the current user.
    * @returns the updated user or an error.
    */
+  createUser: update([UserPayload], Result(User, Error), (payload) => {
+  try {
+    if (!payload.name || !payload.email) {
+      return Err({ BadRequest: 'Invalid input: Name and email are required' });
+    }
+
+    if (!isEmailValid(payload.email)) {
+      return Err({ BadRequest: 'Invalid input: Email is not valid' });
+    }
+
+    if (isUserExists(ic.caller())) {
+      return Err({ BadRequest: 'Invalid input: User already exists' });
+    }
+
+    const newUser = {
+      id: ic.caller(),
+      createdAt: ic.time(),
+      updatedAt: ic.time(),
+      ...payload,
+    };
+    userStorage.insert(newUser.id, newUser);
+    return Ok(newUser);
+  } catch (error) {
+    return Err({ InternalError: 'Internal server error' });
+  }
+}),
+
   updateMe: update([UserPayload], Result(User, Error), (payload) => {
-    try {
-      // If user does not exist, return error.
-      if (!isUserExists(ic.caller())) {
-        return Err({ Unauthorized: 'Create an account first' });
-      }
+  try {
+    if (!isUserExists(ic.caller())) {
+      return Err({ Unauthorized: 'Invalid operation: User does not exist' });
+    }
 
-      // If name or email is not provided, return error.
-      if (!payload.name || !payload.email) {
-        return Err({ BadRequest: 'Name and email are required' });
-      }
+    if (!payload.name || !payload.email) {
+      return Err({ BadRequest: 'Invalid input: Name and email are required' });
+    }
 
-      // If email is not valid, return error.
-      if (!isEmailValid(payload.email)) {
-        return Err({ BadRequest: 'Email is not valid' });
-      }
+    if (!isEmailValid(payload.email)) {
+      return Err({ BadRequest: 'Invalid input: Email is not valid' });
+    }
+
+    const user = userStorage.get(ic.caller()).Some;
+    const updatedUser = {
+      ...user,
+      ...payload,
+      updatedAt: ic.time(),
+    };
+    userStorage.insert(updatedUser.id, updatedUser);
+    return Ok(updatedUser);
+  } catch (error) {
+    return Err({ InternalError: 'Internal server error' });
+  }
+}),
 
       // Get user from storage.
       const user = userStorage.get(ic.caller()).Some;
@@ -175,33 +179,30 @@ export default Canister({
    * @returns the created task or an error.
    */
   createTask: update([TaskPayload], Result(Task, Error), (payload) => {
-    try {
-      // If user does not exist, return error.
-      if (!isUserExists(ic.caller())) {
-        return Err({ Unauthorized: 'Create an account first' });
-      }
-
-      // If title is not provided, return error.
-      if (!payload.title) {
-        return Err({ BadRequest: 'Title is required' });
-      }
-
-      // Create new task, insert it into storage and return it.
-      const task = {
-        id: uuidv4(),
-        isCompleted: false,
-        owner: ic.caller(),
-        createdAt: ic.time(),
-        updatedAt: ic.time(),
-        ...payload,
-      };
-      taskStorage.insert(task.id, task);
-      return Ok(task);
-    } catch (error) {
-      // If any error occurs, return it.
-      return Err({ InternalError: `${error}` });
+  try {
+    if (!isUserExists(ic.caller())) {
+      return Err({ Unauthorized: 'Invalid operation: User does not exist' });
     }
-  }),
+
+    if (!payload.title) {
+      return Err({ BadRequest: 'Invalid input: Title is required' });
+    }
+
+    const task = {
+      id: uuidv4(),
+      isCompleted: false,
+      owner: ic.caller(),
+      createdAt: ic.time(),
+      updatedAt: ic.time(),
+      ...payload,
+    };
+    taskStorage.insert(task.id, task);
+    return Ok(task);
+  } catch (error) {
+    return Err({ InternalError: 'Internal server error' });
+  }
+}),
+
 
   /**
    * Retrieves all current user's tasks.
@@ -232,43 +233,37 @@ export default Canister({
    * @returns the updated task or an error.
    */
   updateMyTask: update([text, TaskPayload], Result(Task, Error), (id, payload) => {
-    try {
-      // If user does not exist, return error.
-      if (!isUserExists(ic.caller())) {
-        return Err({ Unauthorized: 'Create an account first' });
-      }
-
-      // If title is not provided, return error.
-      if (!payload.title) {
-        return Err({ BadRequest: 'Title is required' });
-      }
-
-      // If task does not exist, return error.
-      if (!isTaskExists(id)) {
-        return Err({ NotFound: `Task with id ${id} not found` });
-      }
-
-      // Get task from storage.
-      const task = taskStorage.get(id).Some;
-
-      // If user is not the task owner, return error.
-      if (task.owner.toText() !== ic.caller().toText()) {
-        return Err({ Forbidden: 'You are not the task owner' });
-      }
-
-      // Update task, insert it into storage and return it.
-      const updatedTask = {
-        ...task,
-        ...payload,
-        updatedAt: ic.time(),
-      };
-      taskStorage.insert(updatedTask.id, updatedTask);
-      return Ok(updatedTask);
-    } catch (error) {
-      // If any error occurs, return it.
-      return Err({ InternalError: `${error}` });
+  try {
+    if (!isUserExists(ic.caller())) {
+      return Err({ Unauthorized: 'Invalid operation: User does not exist' });
     }
-  }),
+
+    if (!payload.title) {
+      return Err({ BadRequest: 'Invalid input: Title is required' });
+    }
+
+    if (!isTaskExists(id)) {
+      return Err({ NotFound: `Task not found with id ${id}` });
+    }
+
+    const task = taskStorage.get(id).Some;
+
+    if (task.owner.toText() !== ic.caller().toText()) {
+      return Err({ Forbidden: 'Invalid operation: You are not the task owner' });
+    }
+
+    const updatedTask = {
+      ...task,
+      ...payload,
+      updatedAt: ic.time(),
+    };
+    taskStorage.insert(updatedTask.id, updatedTask);
+    return Ok(updatedTask);
+  } catch (error) {
+    return Err({ InternalError: 'Internal server error' });
+  }
+}),
+
 
   /**
    * Toggles the current user's task completion.
@@ -276,38 +271,33 @@ export default Canister({
    * @returns the toggled task or an error.
    */
   toggleMyTask: update([text], Result(Task, Error), (id) => {
-    try {
-      // If user does not exist, return error.
-      if (!isUserExists(ic.caller())) {
-        return Err({ Unauthorized: 'Create an account first' });
-      }
-
-      // If task does not exist, return error.
-      if (!isTaskExists(id)) {
-        return Err({ NotFound: `Task with id ${id} not found` });
-      }
-
-      // Get task from storage.
-      const task = taskStorage.get(id).Some;
-
-      // If user is not the task owner, return error.
-      if (task.owner.toText() !== ic.caller().toText()) {
-        return Err({ Forbidden: 'You are not the task owner' });
-      }
-
-      // Toggle task, insert it into storage and return it.
-      const toggledTask = {
-        ...task,
-        isCompleted: !task.isCompleted,
-        updatedAt: ic.time(),
-      };
-      taskStorage.insert(toggledTask.id, toggledTask);
-      return Ok(toggledTask);
-    } catch (error) {
-      // If any error occurs, return it.
-      return Err({ InternalError: `${error}` });
+  try {
+    if (!isUserExists(ic.caller())) {
+      return Err({ Unauthorized: 'Invalid operation: User does not exist' });
     }
-  }),
+
+    if (!isTaskExists(id)) {
+      return Err({ NotFound: `Task not found with id ${id}` });
+    }
+
+    const task = taskStorage.get(id).Some;
+
+    if (task.owner.toText() !== ic.caller().toText()) {
+      return Err({ Forbidden: 'Invalid operation: You are not the task owner' });
+    }
+
+    const toggledTask = {
+      ...task,
+      isCompleted: !task.isCompleted,
+      updatedAt: ic.time(),
+    };
+    taskStorage.insert(toggledTask.id, toggledTask);
+    return Ok(toggledTask);
+  } catch (error) {
+    return Err({ InternalError: 'Internal server error' });
+  }
+}),
+
 
   /**
    * Deletes the current user's task.
@@ -315,34 +305,27 @@ export default Canister({
    * @returns a message or an error.
    */
   deleteMyTask: update([text], Result(text, Error), (id) => {
-    try {
-      // If user does not exist, return error.
-      if (!isUserExists(ic.caller())) {
-        return Err({ Unauthorized: 'Create an account first' });
-      }
-
-      // If task does not exist, return error.
-      if (!isTaskExists(id)) {
-        return Err({ NotFound: `Task with id ${id} not found` });
-      }
-
-      // Get task from storage.
-      const task = taskStorage.get(id).Some;
-
-      // If user is not the task owner, return error.
-      if (task.owner.toText() !== ic.caller().toText()) {
-        return Err({ Forbidden: 'You are not the task owner' });
-      }
-
-      // Delete task from storage and return message.
-      taskStorage.remove(task.id);
-      return Ok('Task deleted successfully');
-    } catch (error) {
-      // If any error occurs, return it.
-      return Err({ InternalError: `${error}` });
+  try {
+    if (!isUserExists(ic.caller())) {
+      return Err({ Unauthorized: 'Invalid operation: User does not exist' });
     }
-  }),
-});
+
+    if (!isTaskExists(id)) {
+      return Err({ NotFound: `Task not found with id ${id}` });
+    }
+
+    const task = taskStorage.get(id).Some;
+
+    if (task.owner.toText() !== ic.caller().toText()) {
+      return Err({ Forbidden: 'Invalid operation: You are not the task owner' });
+    }
+
+    taskStorage.remove(task.id);
+    return Ok('Task deleted successfully');
+  } catch (error) {
+    return Err({ InternalError: 'Internal server error' });
+  }
+}),
 
 // A workaround to make uuid package work with Azle.
 globalThis.crypto = {
